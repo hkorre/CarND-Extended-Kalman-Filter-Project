@@ -1,4 +1,4 @@
-#include "FusionEKF.h"
+include "FusionEKF.h"
 #include "tools.h"
 #include "Eigen/Dense"
 #include <iostream>
@@ -26,6 +26,18 @@ FusionEKF::FusionEKF() {
   TODO:
     * Finish initializing the FusionEKF.
   */
+
+  R_laser_ << 0.2, 0.0,
+              0.0, 0.2;
+  // 2. Values for R_radar
+  R_radar_ << 2.0, 0.0, 0.0,
+              0.0, 2.0, 0.0,
+              0.0, 0.0, 0.2;
+  // 3. values for H_laser
+  H_laser_ << 1, 0, 0, 0,
+              0, 1, 0, 0;
+  // 4. Hj by using tools? Maybe not 
+  // 5. ekf_.init(Xx)
 }
 
 /**
