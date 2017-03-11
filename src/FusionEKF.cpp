@@ -3,12 +3,13 @@
 #include "Eigen/Dense"
 #include <iostream>
 
-#define LASER_COV      0.2f
-#define RADAR_POS_COV  2.0f
-#define RADAR_VEL_COV  0.2f
+#define LASER_COV         0.0225f
+#define RADAR_RO_COV      0.09f
+#define RADAR_PHI_COV     0.0009f
+#define RADAR_RO_DOT_COV  0.09f
 
-#define NOISE_AX       5
-#define NOISE_AY       5
+#define NOISE_AX       9
+#define NOISE_AY       9
 
 #define P_POS_INIT     10
 #define P_VEL_INIT     1000
@@ -40,9 +41,9 @@ FusionEKF::FusionEKF() {
   R_laser_ << LASER_COV, 0.0,
               0.0, LASER_COV;
 
-  R_radar_ << RADAR_POS_COV,           0.0,           0.0,
-              0.0, RADAR_POS_COV,           0.0,
-              0.0,           0.0, RADAR_VEL_COV;
+  R_radar_ << RADAR_RO_COV, 0.0, 0.0,
+              0.0, RADAR_PHI_COV, 0.0,
+              0.0, 0.0, RADAR_RO_DOT_COV;
 
   H_laser_ << 1, 0, 0, 0,
               0, 1, 0, 0;
@@ -89,8 +90,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 
       //set the state with the initial location and zero velocity
       float ro = measurement_pack.raw_measurements_[0];
-      float theta = measurement_pack.raw_measurements_[1];
-      ekf_.x_ << ro*cos(theta), ro*sin(theta), 0, 0;
+      float phi = measurement_pack.raw_measurements_[1];
+      ekf_.x_ << ro*cos(phi), ro*sin(phi), 0, 0;
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
       /**
@@ -129,7 +130,6 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   //compute the time elapsed between the current and previous measurements
   float dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000.0;	//dt - expressed in seconds
   cout << "dt = " << dt << endl;
-  //cout << dt << endl;
   previous_timestamp_ = measurement_pack.timestamp_;
 
   float dt_2 = dt * dt;
@@ -162,8 +162,18 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
+    cout << "radar update..." << endl;
+    ekf_.R_ = R_radar_; 
+    Tools tools;
+    Hj_ = tools.CalculateJacobian(ekf_.x_);
+    ekf_.H_ = Hj_;
+    ekf_.UpdateEKF(measurement_pack.raw_measurements_);
   } else {
     // Laser updates
+    cout << "laser update..." << endl;
+    ekf_.R_ = R_laser_; 
+    ekf_.H_ = H_laser_;
+    ekf_.Update(measurement_pack.raw_measurements_);
   }
 
   // print the output
